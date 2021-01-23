@@ -30,6 +30,12 @@ class DiscordBotClient(discord.Client):
 
         # Create or open a database for bot data
         self.database = sqlite3.connect('data/bot.db')
+        self.dbcursor = self.database.cursor()
+
+    def __del__(self):
+        # Save changes and close the database
+        self.database.commit()
+        self.database.close()
 
 
     ##
@@ -43,6 +49,7 @@ class DiscordBotClient(discord.Client):
     # Event handler for a text-channel message
     async def on_message(self, message):
         print('Saw message: {}'.format(message.content))
+
 
 
 # Read the token from a file
