@@ -19,7 +19,7 @@ follows:
 
 1. Install all prerequisites. You will need a working Python implementation
    and the `discord` package, which can be installed with
-   `pip install --user discord`. It is recommended that you install the
+   `pip3 install --user discord`. It is recommended that you install the
    discord module as a non-privileged user, possibly one created to run the
    bot. All other modules are part of the Python standard library.
 
