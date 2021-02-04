@@ -36,8 +36,7 @@ class DiscordBotClient(discord.Client):
         # Save changes and close the database
         self.database.commit()
         self.database.close()
-        # Log out of Discord
-        self.logout()
+        print('Stopped DiscordBotClient')
 
 
     ##
@@ -46,7 +45,7 @@ class DiscordBotClient(discord.Client):
 
     # Event handler for bot startup
     async def on_ready(self):
-        print('Ready!')
+        print('Started DiscordBotClient')
 
     # Event handler for a text-channel message
     async def on_message(self, message):
