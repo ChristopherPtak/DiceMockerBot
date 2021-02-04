@@ -36,6 +36,8 @@ class DiscordBotClient(discord.Client):
         # Save changes and close the database
         self.database.commit()
         self.database.close()
+        # Log out of Discord
+        self.logout()
 
 
     ##
