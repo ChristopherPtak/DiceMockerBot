@@ -1,10 +1,26 @@
 #!/bin/env python3
 
 import os
+import random
+
 import discord
 
 
 class DiceMockerClient(discord.Client):
+
+    insult_list = [ 'lmao'
+                  , 'lmao idiot'
+                  , 'lmao loser'
+                  , 'haha'
+                  , 'haha idiot'
+                  , 'haha loser'
+                  , 'lol'
+                  , 'lol idiot'
+                  , 'lol loser'
+                  , 'nice one'
+                  , 'nice one BUDDY'
+                  , 'ladies and gentlemen, we have a winner'
+                  ]
 
     async def on_ready(self):
         print('Started DiceMockerClient')
@@ -15,10 +31,11 @@ class DiceMockerClient(discord.Client):
             return
 
         lines = message.content.split('\n')
-        roll_value = int(lines[1].split()[1])
+        actual_roll_value = int(lines[1].split()[1])
 
-        if roll_value <= 2:
-            await message.channel.send('lmao loser')
+        if actual_roll_value <= 2:
+            insult = random.choice(DiceMockerClient.insult_list)
+            await message.channel.send(insult)
 
 
 token = open('token.txt', 'r').read()
