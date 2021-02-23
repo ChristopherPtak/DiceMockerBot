@@ -53,25 +53,13 @@ class DiceMockerClient(discord.Client):
             return RollStatus.IGNORE_ROLL
 
     def _parse_Avrae(self, content):
-        # TODO: Implement this function
-        return RollStatus.IGNORE_ROLL
+        raise NotImplementedError
 
     async def _mock_reply(self, roll, send):
 
-        if roll == RollStatus.LOW_ROLL:
+        if roll == RollStatus.CRIT_FAIL and random.random() < 0.25:
 
-            # Create a random taunt from these choices
-            laugh = random.choice(['haha', 'lol', 'lmao', '😂'])
-            insult = random.choice(['loser', 'idiot', 'fool'])
-
-            if random.random() < 0.33:
-                await send(laugh)
-            else:
-                await send(laugh + ' ' + insult)
-
-        elif roll == RollStatus.CRIT_FAIL:
-
-            # Send a tutorial link when someone crit fails
+            # Have a 25% chance to send a tutorial link on a crit fail
             embed = discord.Embed(url='https://dnd.wizards.com/get-started',
                                   title='D&D for Beginners',
                                   description=('New to Dungeons & Dragons? ' +
@@ -81,6 +69,18 @@ class DiceMockerClient(discord.Client):
                                                'get you started!'))
 
             await send('Maybe this will help you', embed=embed)
+
+        elif roll == RollStatus.LOW_ROLL:
+
+            # Create a random taunt from these choices
+            laugh = random.choice(['haha', 'lol', 'lmao', '😂'])
+            insult = random.choice(['loser', 'idiot', 'fool'])
+
+            # 33% chance to just send a laugh but not an insult
+            if random.random() < 0.33:
+                await send(laugh)
+            else:
+                await send(laugh + ' ' + insult)
 
 
 token = open('token.txt', 'r').read()
