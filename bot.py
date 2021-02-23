@@ -1,5 +1,14 @@
 #!/bin/env python3
 
+
+##
+## DiceMockerBot
+## (C) 2021 Christopher Ptak
+##
+## A Discord bot that makes fun of low D&D rolls
+##
+
+
 import os
 import random
 import re
@@ -27,7 +36,7 @@ class DiceMockerClient(discord.Client):
 
         if message.author.name == 'DiceParser':
             (roll, minval, maxval) = self._parse_DiceParser(message.content)
-        elif message.author.name == 'Avrae.avrae':
+        elif message.author.name == 'Avrae':
             (roll, minval, maxval) = self._parse_Avrae(message.content)
         else:
             # Ignore all messages not from a Dice bot
@@ -54,11 +63,13 @@ class DiceMockerClient(discord.Client):
                 roll = int(tokens[1])
             elif len(tokens) > 0 and tokens[0].startswith('Details'):
 
+                # Get everything after 'Details:['
                 expression = tokens[0][9:]
+
                 minval = 0
                 maxval = 0
 
-                # TODO: Come up with a better way of estimating min and max
+                # TODO: Come up with a more sophisticated parser
 
                 for token in re.split('[+-]', expression):
 
@@ -89,7 +100,49 @@ class DiceMockerClient(discord.Client):
         return (roll, minval, maxval)
 
     def _parse_Avrae(self, content):
-        raise NotImplementedError
+
+        roll = None
+        minval = None
+        maxval = None
+
+        for line in content.split('\n'):
+            tokens = line.split()
+            if len(tokens) == 2 and tokens[0] == '**Total**:':
+                roll = int(tokens[1])
+            elif len(tokens) > 0 and tokens[0] == '**Result**:':
+
+                # Get everything after '**Result**:'
+                expression = line[12:]
+
+                minval = 0
+                maxval = 0
+
+                # TODO: Come up with a more sophisticated parser
+                # TODO: Reduce code duplication with the above method
+
+                for token in re.split('[+-]', expression):
+
+                    stoken = token.strip()
+
+                    match = re.fullmatch('[0-9]+', stoken)
+                    if match is not None:
+                        minval += int(match.group(0))
+                        maxval += int(match.group(0))
+                        continue
+
+                    match = re.fullmatch('([0-9]+)d([0-9]+) \\(.*\\)', stoken)
+                    if match is not None:
+                        minval += int(match.group(1))
+                        maxval += int(match.group(1)) * int(match.group(2))
+                        continue
+
+                    raise ValueError('Unrecognized token \'' + token
+                                     + '\' in Avrae output')
+
+        if None in [roll, minval, maxval]:
+            raise ValueError('Unable to find all parts of Avrae output')
+
+        return (roll, minval, maxval)
 
     ##
     ## Categorize a roll based on the three parameters from the parsers.
