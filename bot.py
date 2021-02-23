@@ -7,7 +7,7 @@ import discord
 
 
 class RollStatus:
-    NORMAL_ROLL = 0
+    IGNORE_ROLL = 0
     LOW_ROLL    = 1
     CRIT_FAIL   = 2
 
@@ -21,31 +21,46 @@ class DiceMockerClient(discord.Client):
 
         if message.author.name == 'DiceParser':
             roll = self._parse_DiceParser(message.content)
+        elif message.author.name == 'Avrae.avrae':
+            roll = self._parse_Avrae(message.content)
         else:
             # Ignore all messages not from a Dice bot
             return
 
-        if roll != RollStatus.NORMAL_ROLL:
+        if roll != RollStatus.IGNORE_ROLL:
             await self._mock_reply(roll, message.channel.send)
 
     def _parse_DiceParser(self, content):
 
-        roll_line = content.split('\n')[1]
-        actual_roll_value = int(roll_line.split()[1])
+        value_line = content.split('\n')[1]
+        final_value = int(value_line.split()[1])
 
-        if actual_roll_value == 1:
+        # TODO: Implement a calculation of these quantities
+        min_possible_value = 0
+        max_possible_value = 1
+
+        if max_possible_value == min_possible_value:
+            # Ignore trivial rolls like a d0 or d1
+            return RollStatus.IGNORE_ROLL
+
+        if final_value == min_possible_value:
             return RollStatus.CRIT_FAIL
-        if actual_roll_value <= 5:
-            # Consider anything below 5 "low"
-            # TODO: Replace with percentage of maximum
+        if final_value <= max_possible_value * 0.25:
+            # Anything below 25% of the max is considered a low roll
             return RollStatus.LOW_ROLL
         else:
-            return RollStatus.NORMAL_ROLL
+            # All other rolls should be ignored
+            return RollStatus.IGNORE_ROLL
+
+    def _parse_Avrae(self, content):
+        # TODO: Implement this function
+        return RollStatus.IGNORE_ROLL
 
     async def _mock_reply(self, roll, send):
 
         if roll == RollStatus.LOW_ROLL:
 
+            # Create a random taunt from these choices
             laugh = random.choice(['haha', 'lol', 'lmao', '😂'])
             insult = random.choice(['loser', 'idiot', 'fool'])
 
@@ -56,6 +71,7 @@ class DiceMockerClient(discord.Client):
 
         elif roll == RollStatus.CRIT_FAIL:
 
+            # Send a tutorial link when someone crit fails
             embed = discord.Embed(url='https://dnd.wizards.com/get-started',
                                   title='D&D for Beginners',
                                   description=('New to Dungeons & Dragons? ' +
