@@ -32,17 +32,24 @@ class DiceMockerClient(discord.Client):
     ## Check to see if the message was sent by one of the supported dice bots,
     ## and if so parse the message and respond appropriately.
     ##
+    ## TODO: Add logging functionality to bot
+    ##
     async def on_message(self, message):
 
         if message.author.name == 'DiceParser':
-            (roll, minval, maxval) = self._parse_DiceParser(message.content)
+            roll = self._parse_DiceParser(message)
         elif message.author.name == 'Avrae':
-            (roll, minval, maxval) = self._parse_Avrae(message.content)
+            roll = self._parse_Avrae(message)
         else:
             # Ignore all messages not from a Dice bot
             return
 
-        status = self._judge_roll(roll, minval, maxval)
+        if roll is None:
+            return
+
+        (val, minval, maxval) = roll
+
+        status = self._judge_roll(val, minval, maxval)
         if status != RollStatus.IGNORE_ROLL:
             await self._mock_reply(status, message.channel.send)
 
@@ -51,16 +58,24 @@ class DiceMockerClient(discord.Client):
     ## roll, the minimum value that could have been rolled, and the maximum
     ## possible value.
 
-    def _parse_DiceParser(self, content):
+    ##
+    ## Message parser for the DiceParser bot
+    ##
+    ## TODO: Come up with a more sophisticated parser
+    ## TODO: Add some sort of check for errors or log them?
+    ##
+    def _parse_DiceParser(self, message):
 
-        roll = None
+        content = message.content
+
+        val = None
         minval = None
         maxval = None
 
         for line in content.split('\n'):
             tokens = line.split()
             if len(tokens) == 2 and tokens[0] == '#':
-                roll = int(tokens[1])
+                val = int(tokens[1])
             elif len(tokens) > 0 and tokens[0].startswith('Details'):
 
                 # Get everything after 'Details:['
@@ -68,8 +83,6 @@ class DiceMockerClient(discord.Client):
 
                 minval = 0
                 maxval = 0
-
-                # TODO: Come up with a more sophisticated parser
 
                 for token in re.split('[+-]', expression):
 
@@ -94,69 +107,101 @@ class DiceMockerClient(discord.Client):
                     raise ValueError('Unrecognized token \'' + token
                                      + '\' in DiceParser output')
 
-        if None in [roll, minval, maxval]:
-            raise ValueError('Unable to find all parts of DiceParser output')
+        if None in [val, minval, maxval]:
+            # This is probably a DiceParser error message
+            return
 
-        return (roll, minval, maxval)
+        return (val, minval, maxval)
 
-    def _parse_Avrae(self, content):
+    ##
+    ## Message parser for the Avrae bot
+    ##
+    ## TODO: Come up with a more sophisticated parser
+    ## TODO: Reduce code duplication with the parser for DiceParser
+    ##
+    def _parse_Avrae(self, message):
+        if len(message.embeds) > 0:
+            # Ignore other embeds if there are more than 1
+            return self._parse_Avrae_character(message.embeds[0])
+        else:
+            return self._parse_Avrae_generic(message.content)
 
-        roll = None
-        minval = None
-        maxval = None
+    def _parse_Avrae_character(self, embed):
+
+        tokens = embed.description.split('=')
+
+        if len(tokens) != 2:
+            # Ignore message if the embed does not contain a roll
+            return
+
+        # Remove excess chars from the tokens
+        expression = tokens[0].strip()
+        total = tokens[1].strip()[1:-1]
+
+        return self._parse_Avrae_expression(expression, total)
+
+    def _parse_Avrae_generic(self, content):
+
+        expression = None
+        total = None
 
         for line in content.split('\n'):
             tokens = line.split()
             if len(tokens) == 2 and tokens[0] == '**Total**:':
-                roll = int(tokens[1])
+                total = tokens[1]
             elif len(tokens) > 0 and tokens[0] == '**Result**:':
-
                 # Get everything after '**Result**:'
                 expression = line[12:]
 
-                minval = 0
-                maxval = 0
+        if None in [expression, total]:
+            # This is not an error because Avrae has
+            # outputs other than dice rolls
+            return
 
-                # TODO: Come up with a more sophisticated parser
-                # TODO: Reduce code duplication with the above method
+        return self._parse_Avrae_expression(expression, total)
 
-                for token in re.split('[+-]', expression):
+    def _parse_Avrae_expression(self, expression, total):
 
-                    stoken = token.strip()
+        val = int(total.strip())
 
-                    match = re.fullmatch('[0-9]+', stoken)
-                    if match is not None:
-                        minval += int(match.group(0))
-                        maxval += int(match.group(0))
-                        continue
+        minval = 0
+        maxval = 0
 
-                    match = re.fullmatch('([0-9]+)d([0-9]+) \\(.*\\)', stoken)
-                    if match is not None:
-                        minval += int(match.group(1))
-                        maxval += int(match.group(1)) * int(match.group(2))
-                        continue
 
-                    raise ValueError('Unrecognized token \'' + token
-                                     + '\' in Avrae output')
+        for token in re.split('[+-]', expression.strip()):
 
-        if None in [roll, minval, maxval]:
-            raise ValueError('Unable to find all parts of Avrae output')
+            stoken = token.strip()
 
-        return (roll, minval, maxval)
+            match = re.fullmatch('[0-9]+', stoken)
+            if match is not None:
+                minval += int(match.group(0))
+                maxval += int(match.group(0))
+                continue
+
+            match = re.fullmatch('([0-9]+)d([0-9]+) \\(.*\\)', stoken)
+            if match is not None:
+                minval += int(match.group(1))
+                maxval += int(match.group(1)) * int(match.group(2))
+                continue
+
+            raise ValueError('Unrecognized token \'' + token
+                             + '\' in Avrae output')
+
+        return (val, minval, maxval)
 
     ##
     ## Categorize a roll based on the three parameters from the parsers.
     ## Returns either IGNORE_ROLL, LOW_ROLL, or CRIT_FAIL.
     ##
-    def _judge_roll(self, roll, minval, maxval):
+    def _judge_roll(self, val, minval, maxval):
 
         if (maxval - minval) < 3:
             # Ignore trivial rolls
             return RollStatus.IGNORE_ROLL
 
-        if roll == minval:
+        if val == minval:
             return RollStatus.CRIT_FAIL
-        if roll < maxval * 0.25:
+        if val < maxval * 0.25:
             # Anything below 25% of the max is considered a low roll
             return RollStatus.LOW_ROLL
         else:
