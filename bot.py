@@ -36,12 +36,15 @@ class DiceMockerClient(discord.Client):
     ##
     async def on_message(self, message):
 
+        if message.content.strip() == '!mock':
+            await self._mock_reply(RollStatus.LOW_ROLL, message.channel.send)
+
         if message.author.name == 'DiceParser':
             roll = self._parse_DiceParser(message)
         elif message.author.name == 'Avrae':
             roll = self._parse_Avrae(message)
         else:
-            # Ignore all messages not from a Dice bot
+            # Ignore all other messages not from a Dice bot
             return
 
         if roll is None:
