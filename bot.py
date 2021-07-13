@@ -22,6 +22,10 @@ class RollStatus:
 
 class DiceMockerClient(discord.Client):
 
+    def __init__(self):
+        # Parent class constructor
+        super().__init__()
+
     async def on_ready(self):
         print('Started DiceMockerClient')
 
@@ -29,8 +33,6 @@ class DiceMockerClient(discord.Client):
     ## React to a message send in a public discord channel.
     ## Check to see if the message was sent by one of the supported dice bots,
     ## and if so parse the message and respond appropriately.
-    ##
-    ## TODO: Add logging functionality to bot
     ##
     async def on_message(self, message):
 
@@ -213,6 +215,11 @@ class DiceMockerClient(discord.Client):
     ## choose an appropriate taunt and send it using the callback function.
     ##
     async def mock_reply(self, status, send):
+
+        if status == RollStatus.CRIT_FAIL:
+            print('Mocking a CRIT_FAIL')
+        elif status == RollSatus.LOW_ROLL:
+            print('Mocking a LOW_ROLL')
 
         if status == RollStatus.CRIT_FAIL and random.random() < 0.25:
 
